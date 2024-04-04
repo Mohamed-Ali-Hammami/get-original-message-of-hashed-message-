@@ -32,28 +32,29 @@ def unpad_message(message):
     message += [int(b) for b in bin(length)[2:].zfill(64)]
     return message
 
-def reverse_sha256(message):
+def reverse_sha256(message, k):
     # unpad padded message to get original message
     message = unpad_message(message)
     # split message into 512-bit blocks
     blocks = [message[i:i+512] for i in range(0, len(message), 512)]
     # initialize hash values to final hash value
-h = [int(v, 16) for v in '6a09e667f3bcc908' 'bb67ae8584caa73b' '3c6ef372fe94f82b' 'a54ff53a5f1d36f1' '510e527fade682d1' '9b05688c2b3e6c1f' '1f83d9abfb41bd6b' '5be0cd19137e2179']
+    h_initial = [int(v, 16) for v in ['6a09e667f3bcc908', 'bb67ae8584caa73b', '3c6ef372fe94f82b', 'a54ff53a5f1d36f1', '510e527fade682d1', '9b05688c2b3e6c1f', '1f83d9abfb41bd6b', '5be0cd19137e2179']]
+    h = h_initial.copy()
     # reverse hash for each block
-for block in reversed(blocks):
+    for block in reversed(blocks):
         # split block into 32-bit words
         words = [int(''.join(str(x) for x in block[i:i+32]), 2) for i in range(0, len(block), 32)]
         # reverse the word order
         words = list(reversed(words))
         # extend words to 64 words
         for i in range(16, 64):
-            s0 = rightrotate(words[i-15], 7) ^ rightrotate(words[i-15], 18) ^ (words[i-15] >> 3)
-            s1 = rightrotate(words[i-2], 17) ^ rightrotate(words[i-2], 19) ^ (words[i-2] >> 10)
+            s0 = rightrotate(words[i-15], 2) ^ rightrotate(words[i-15], 13) ^ rightrotate(words[i-15], 22)
+            s1 = rightrotate(words[i-2], 6) ^ rightrotate(words[i-2], 11) ^ rightrotate(words[i-2], 25)
             words.append((words[i-16] + s0 + words[i-7] + s1) % (2**32))
         # initialize hash values for this block
         a, b, c, d, e, f, g, h = h
         # reverse hash for this block
-for i in range(64):
+        for i in range(64):
             s1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25)
             ch = (e & f) ^ ((~e) & g)
             t1 = (h + s1 + ch + k[i] + words[i]) % (2**32)
@@ -69,23 +70,27 @@ for i in range(64):
             b = a
             a = (t1 + t2) % (2**32)
         # update hash values for next block
-h = (h + g) % (2**32)
-g = (g + f) % (2**32)
-f = (f + e) % (2**32)
-e = (e + d) % (2**32)
-d = (d + c) % (2**32)
-c = (c + b) % (2**32)
-b = (b + a) % (2**32)
-a = (a + h) % (2**32)
+        h = (h + g) % (2**32)
+        g = (g + f) % (2**32)
+        f = (f + e) % (2**32)
+        e = (e + d) % (2**32)
+        d = (d + c) % (2**32)
+        c = (c + b) % (2**32)
+        b = (b + a) % (2**32)
+        a = (a + h) % (2**32)
     # concatenate hash values to get final hash
-final_hash = hex(a)[2:].zfill(8) + hex(b)[2:].zfill(8) + hex(c)[2:].zfill(8) + hex(d)[2:].zfill(8) + hex(e)[2:].zfill(8) + hex(f)[2:].zfill(8) + hex(g)[2:].zfill(8) + hex(h)[2:].zfill(8)
-def reverse_sha512(message):
+    final_hash = ''.join(hex(x)[2:].zfill(8) for x in (a, b, c, d, e, f, g, h))
+    return final_hash
+
+
+def reverse_sha512(message, k):
     # unpad padded message to get original message
     message = unpad_message(message)
     # split message into 512-bit blocks
     blocks = [message[i:i+512] for i in range(0, len(message), 512)]
     # initialize hash values to final hash value
-    h = [int(v, 16) for v in ['6a09e667f3bcc908', 'bb67ae8584caa73b', '3c6ef372fe94f82b', 'a54ff53a5f1d36f1', '510e527fade682d1', '9b05688c2b3e6c1f', '1f83d9abfb41bd6b', '5be0cd19137e2179']]
+    h_initial = [int(v, 16) for v in ['6a09e667f3bcc908', 'bb67ae8584caa73b', '3c6ef372fe94f82b', 'a54ff53a5f1d36f1', '510e527fade682d1', '9b05688c2b3e6c1f', '1f83d9abfb41bd6b', '5be0cd19137e2179']]
+    h = h_initial.copy()
     # reverse hash for each block
     for block in reversed(blocks):
         # split block into 64 64-bit words
@@ -125,6 +130,5 @@ def reverse_sha512(message):
         b = (b + a) % (2**64)
         a = (a + h) % (2**64)
     # concatenate the final hash values
-message_digest = bin(a)[2:].zfill(64)
-
-
+    final_hash = ''.join(hex(x)[2:].zfill(16) for x in (a, b, c, d, e, f, g, h))
+    return final_hash
